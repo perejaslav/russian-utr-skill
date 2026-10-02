@@ -14,6 +14,7 @@
 | `в рамках` | для | `bureaucratism` |
 | `с целью` | чтобы | `bureaucratism` |
 | `в связи с` | из-за | `bureaucratism` |
+| `вследствие` | из-за | `bureaucratism` |
 | `на основании` | по | `bureaucratism` |
 | `в настоящее время` | сейчас | `bureaucratism` |
 | `на сегодняшний день` | сейчас | `bureaucratism` |
