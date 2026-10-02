@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -101,7 +102,7 @@ BUREAUCRACY_PHRASES: tuple[tuple[str, str | None], ...] = (
     (r"\bс\s+целью\b", "чтобы"),
     (r"\bв\s+связи\s+с\b", "из-за / потому что"),
     (r"\bв\s+этой\s+связи\b", None),
-    (r"\bна\s+основане\b", "по"),
+    (r"\bна\s+основании\b", "по"),
     (r"\bв\s+настоящее\s+время\b", "сейчас"),
     (r"\bв\s+настоящий\s+момент\b", "сейчас"),
     (r"\bна\s+сегодняшний\s+день\b", "сейчас"),
@@ -117,8 +118,8 @@ BUREAUCRACY_PHRASES: tuple[tuple[str, str | None], ...] = (
     (r"\bпредставляется\s+необходимым\b", "нужно"),
     (r"\bпредставляется\s+возможным\b", "можно"),
     (r"\bявляется\s+целесообразным\b", "нужно"),
-    (r"\bимеющ(?:ий|ая|ее)\b", None),
-    (r"\bявляющ(?:ий|ая|ее)\b", None),
+    (r"\bимеющ(?:ий|ая|ее|ие|его|ей|их)(?:ся)?\b", None),
+    (r"\bявляющ(?:ий|ая|ее|ие|его|ей|их)(?:ся)?\b", None),
     (r"\bв\s+силу\b", "из-за"),
     (r"\bдо\s+сих\s+пор\b", None),
     (r"\bтаким\s+образом\b", None),
@@ -127,6 +128,7 @@ BUREAUCRACY_PHRASES: tuple[tuple[str, str | None], ...] = (
     (r"\bв\s+связи\s+с\s+изложенным\b", None),
     (r"\bс\s+учетом\s+того,\s+что\b", None),
     (r"\bне\s+представляется\s+возможным\b", "нельзя"),
+    (r"\bда(?:ть|[её]т|ют|дут|л[аио]?|вать|йте)\s+указани\w*", "указать"),
     (r"\bданн(?:ый|ая|ое|ые|ого|ом)\b", "назовите предмет прямо"),
 )
 
@@ -156,6 +158,7 @@ KANCER_VERB_PATTERNS: tuple[str, ...] = (
     r"принима\w*",
     r"соверш\w*",
     r"введ\w*",
+    r"ввест\w*",
     r"ввод\w*",
     r"сдела\w*",
 )
@@ -413,7 +416,7 @@ SYNONYM_GROUPS: tuple[tuple[str, tuple[SynonymMember, ...]], ...] = (
     )),
     ("остановка", (
         ("остановить", r"\bостанов\w*\b", None),
-        ("прекратить", r"\bпрекращ\w*\b", None),
+        ("прекратить", r"\b(?:прекращ|прекрат)\w*\b", None),
     )),
     ("показ", (
         ("показать", r"\b(?:покаж\w*|показ\w*)\b", r"показател|показательн"),
@@ -442,7 +445,7 @@ SYNONYM_GROUPS: tuple[tuple[str, tuple[SynonymMember, ...]], ...] = (
     ("изменение", (
         ("изменить", r"\bизмен\w*\b", None),
         ("модифицировать", r"\bмодифиц\w*\b", None),
-        ("править", r"\bправк\w*\b", None),
+        ("править", r"\b(?:правк\w*|править|правит|правят|правлю|правь|правьте)\b", None),
     )),
     ("уведомление", (
         ("сообщить", r"\bсообщ\w*\b", None),
@@ -450,14 +453,14 @@ SYNONYM_GROUPS: tuple[tuple[str, tuple[SynonymMember, ...]], ...] = (
     )),
     ("настройка", (
         ("настроить", r"\bнастро\w*\b", r"настроение"),
-        ("конфигурировать", r"\bконфигурир\w*\b", None),
+        ("конфигурировать", r"\b(?:с)?конфигурир\w*\b", None),
     )),
     ("подключение", (
         ("подключить", r"\bподключ\w*\b", None),
         ("присоединить", r"\bприсоедин\w*\b", None),
     )),
     ("поиск", (
-        ("найти", r"\b(?:найд\w*|наход\w*)\b", None),
+        ("найти", r"\b(?:найд\w*|найт\w*|наход\w*)\b", None),
         ("обнаружить", r"\bобнаруж\w*\b", None),
     )),
 )
@@ -1368,20 +1371,22 @@ def check_synonym_rotation(
     """One term per concept, scoped to a single file."""
     findings = []
     for group, members in SYNONYM_MEMBERS:
-        present: list[tuple[int, int, str, str]] = []
+        # First occurrence of each member anywhere in the file. The earliest
+        # member is the keeper; every other member is reported once.
+        first: dict[str, tuple[int, int, str, str]] = {}
         for line, column, unit in units:
             for label, pattern, exclusion in members:
+                if label in first:
+                    continue
                 for match in pattern.finditer(unit):
                     if exclusion is not None and exclusion.search(match.group(0)):
                         continue
-                    present.append((line, column + match.start() + 1,
-                                    match.group(0), label))
+                    first[label] = (line, column + match.start() + 1,
+                                    match.group(0), label)
                     break
-            if present:
-                break
+        present = sorted(first.values())
         if len(present) < 2:
             continue
-        present.sort()
         keeper = present[0]
         for line, column, matched, label in present[1:]:
             findings.append(_finding(
@@ -1965,7 +1970,7 @@ def build_parser() -> argparse.ArgumentParser:
                     "Только анализ: текст не изменяется.",
     )
     parser.add_argument("files", nargs="*",
-                        help="файлы для проверки; без файлов читается stdin")
+                        help="файлы или каталоги (.md, .markdown, .txt); без них читается stdin")
     parser.add_argument("--json", action="store_true",
                         help="вывести результат в формате JSON")
     parser.add_argument("--baseline", type=int, default=0, metavar="N",
@@ -1981,6 +1986,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version",
                         version="utr-lint.py %s" % __version__)
     return parser
+
+
+#: Text files picked up when a directory is passed on the command line.
+TEXT_SUFFIXES = (".md", ".markdown", ".txt")
+
+
+def expand_paths(paths: Sequence[str]) -> list[str]:
+    """Replace each directory with the text files inside it, sorted."""
+    expanded: list[str] = []
+    for path in paths:
+        if os.path.isdir(path):
+            found = []
+            for root, dirs, files in os.walk(path):
+                dirs[:] = sorted(name for name in dirs if not name.startswith("."))
+                found.extend(
+                    os.path.join(root, name) for name in files
+                    if name.lower().endswith(TEXT_SUFFIXES)
+                )
+            expanded.extend(sorted(found))
+        else:
+            expanded.append(path)
+    return expanded
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -2004,7 +2031,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     findings: list[Finding] = []
     analysis = Analysis()
     if args.files:
-        for path in args.files:
+        for path in expand_paths(args.files):
             try:
                 text = read_text(path)
             except OSError as error:

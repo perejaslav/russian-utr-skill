@@ -808,3 +808,72 @@ def test_examples_add_no_fact():
     for name, before, after in _example_pairs():
         added = _facts(after) - _facts(before)
         assert not added, "%s adds %s" % (name, sorted(added))
+
+
+#: Hedge words. If the source hedges, the rewrite must hedge too (rule 25).
+HEDGE = re.compile(r"\b(?:вероятн\w*|возможно|наверн\w*|предположительн\w*|по-видимому)\b", re.I)
+
+
+def test_examples_keep_hedges():
+    for name, before, after in _example_pairs():
+        if HEDGE.search(before):
+            assert HEDGE.search(after), "%s drops a hedge" % name
+
+
+# ---------------------------------------------------------------------------
+# The glossary promises what the linter finds
+# ---------------------------------------------------------------------------
+
+GLOSSARY = ROOT / "references" / "glossary.md"
+GLOSSARY_ROW = re.compile(r"^\| `([^`]+)` \| [^|]+\| `([a-z-]+)` \|$", re.M)
+
+
+def _glossary_section(title: str) -> str:
+    text = GLOSSARY.read_text(encoding="utf-8")
+    return text.split(title, 1)[1].split("\n## ", 1)[0]
+
+
+def test_glossary_entries_are_detected():
+    rows = []
+    for title in ("## Замена канцеляризмов", "## Замена глагола"):
+        rows += GLOSSARY_ROW.findall(_glossary_section(title))
+    assert len(rows) >= 30
+    for phrase, rule in rows:
+        sentence = "Оператор должен %s узла сегодня." % phrase
+        assert rule in rules_of(sentence), phrase
+
+
+def test_glossary_synonyms_match_the_linter():
+    groups = {name: members for name, members in utr.SYNONYM_GROUPS}
+    section = _glossary_section("## Одно действие")
+    rows = re.findall(r"^\| ([а-яё]+) \| ([^|]+) \|$", section, re.M)
+    assert rows
+    for concept, words in rows:
+        members = groups[concept]
+        names = [name for name, _, _ in members]
+        for word in (item.strip().strip("`") for item in words.split(",")):
+            assert word in names, (concept, word)
+        for name, pattern, _ in members:
+            assert re.search(pattern, name, re.I), (concept, name)
+
+
+# ---------------------------------------------------------------------------
+# Published documents carry no placeholders
+# ---------------------------------------------------------------------------
+
+
+def test_no_placeholders_in_documents():
+    for path in ROOT.glob("**/*.md"):
+        text = path.read_text(encoding="utf-8")
+        assert "your-account" not in text, path
+
+
+def test_directory_argument_is_expanded(tmp_path, capsys):
+    (tmp_path / "a.md").write_text("Проверьте систему; потом тест.\n", encoding="utf-8")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "b.txt").write_text("Проверьте систему.\n", encoding="utf-8")
+    (tmp_path / "skip.py").write_text("x = 1; y = 2\n", encoding="utf-8")
+    assert utr.main(["--json", str(tmp_path)]) == 1
+    payload = json.loads(capsys.readouterr().out)
+    files = {Path(item["file"]).name for item in payload["violations"]}
+    assert files == {"a.md"}
