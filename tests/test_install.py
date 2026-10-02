@@ -133,6 +133,18 @@ def test_existing_target_needs_force(tmp_path, capsys):
     assert (tmp_path / ".pi/agent/skills/russian-utr-skill/SKILL.md").is_file()
 
 
+def test_force_replaces_read_only_files(tmp_path, capsys):
+    target = tmp_path / ".claude/skills/russian-utr-skill"
+    objects = target / ".git" / "objects"
+    objects.mkdir(parents=True)
+    locked = objects / "pack"
+    locked.write_text("x")
+    locked.chmod(0o444)
+    assert inst.main(["--harness", "claude", "--force", "--home", str(tmp_path)]) == 0
+    assert not (target / ".git").exists()
+    assert (target / "SKILL.md").is_file()
+
+
 def test_dry_run_changes_nothing(tmp_path, capsys):
     assert inst.main(["--harness", "all", "--dry-run", "--home", str(tmp_path)]) == 0
     assert not any(tmp_path.iterdir())

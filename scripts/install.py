@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+import stat
 import sys
 from pathlib import Path
 
@@ -92,6 +93,19 @@ def _ignore(_directory: str, names: list[str]) -> set[str]:
     return {name for name in names if name == "__pycache__" or name.endswith((".pyc", ".pyo"))}
 
 
+def _make_writable(func, path, _error) -> None:
+    """Clear the read-only flag and retry. Git marks its objects read-only on Windows."""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
+def _remove_tree(path: Path) -> None:
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_make_writable)
+    else:
+        shutil.rmtree(path, onerror=_make_writable)
+
+
 def install(target: Path, link: bool, force: bool) -> None:
     if target.is_symlink() or target.exists():
         if not force:
@@ -99,7 +113,7 @@ def install(target: Path, link: bool, force: bool) -> None:
         if target.is_symlink() or target.is_file():
             target.unlink()
         else:
-            shutil.rmtree(target)
+            _remove_tree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     if link:
         os.symlink(SOURCE, target, target_is_directory=True)
