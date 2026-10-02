@@ -90,14 +90,103 @@
 
 ## Установка
 
-Клонируйте репозиторий в каталог скиллов агента. Для Claude Code это
-`~/.claude/skills/` (для всех проектов) или `.claude/skills/` внутри проекта.
+Формат скилла — свободный стандарт Agent Skills
+([agentskills.io](https://agentskills.io/specification)). Формат понимают
+Claude Code, OpenCode, Codex, Gemini CLI, Cursor, Pi, Oh My Pi и Goose. Скилл не
+зависит от инструментов конкретного агента. Меняется только каталог установки.
+
+Скилл называется `russian-utr-skill`, как и репозиторий. Стандарт требует,
+чтобы имя каталога совпадало с полем `name` в `SKILL.md`. Команда `git clone`
+по умолчанию создаёт каталог с именем репозитория. Поэтому имя каталога
+указывать не нужно.
+
+### Быстрая установка
+
+Скрипт `scripts/install.py` копирует нужные файлы скилла. Тесты и служебные
+файлы Git он не копирует.
 
 ```bash
-git clone https://github.com/perejaslav/russian-utr-skill ~/.claude/skills/russian-utr
+git clone https://github.com/perejaslav/russian-utr-skill
+cd russian-utr-skill
+python scripts/install.py
 ```
 
-Имя каталога `russian-utr` совпадает с полем `name` в `SKILL.md`.
+Без параметров скрипт ставит скилл в два каталога:
+
+- `~/.agents/skills/russian-utr-skill` для OpenCode, Codex, Gemini CLI, Cursor, Pi,
+  Oh My Pi и Goose
+- `~/.claude/skills/russian-utr-skill` для Claude Code.
+
+Параметры скрипта:
+
+```bash
+python scripts/install.py --list
+python scripts/install.py --harness codex
+python scripts/install.py --harness opencode,pi
+python scripts/install.py --harness all
+python scripts/install.py --project путь/к/проекту
+python scripts/install.py --link
+python scripts/install.py --force
+python scripts/install.py --dry-run
+```
+
+Параметр `--link` создаёт символическую ссылку на клон. Тогда `git pull`
+сразу обновляет скилл. В Windows символическую ссылку может создать
+администратор. Обычный пользователь может её создать, если включён режим
+разработчика.
+
+### Ручная установка
+
+Перейдите в каталог скиллов из таблицы и клонируйте туда репозиторий. Каталог для всех проектов
+указан в колонке «Пользователь». Каталог для одного проекта указан в колонке
+«Проект».
+
+| Агент | Пользователь | Проект |
+| --- | --- | --- |
+| Claude Code | `~/.claude/skills/` | `.claude/skills/` |
+| OpenCode | `~/.agents/skills/` или `~/.config/opencode/skills/` | `.agents/skills/` или `.opencode/skills/` |
+| Codex | `~/.agents/skills/` | `.agents/skills/` |
+| Gemini CLI | `~/.agents/skills/` или `~/.gemini/skills/` | `.agents/skills/` или `.gemini/skills/` |
+| Cursor | `~/.agents/skills/` или `~/.cursor/skills/` | `.agents/skills/` или `.cursor/skills/` |
+| Pi | `~/.agents/skills/` или `~/.pi/agent/skills/` | `.agents/skills/` или `.pi/skills/` |
+| Oh My Pi | `~/.agents/skills/` или `~/.omp/agent/skills/` | `.agents/skills/` или `.omp/skills/` |
+| Goose | `~/.agents/skills/` | `.agents/skills/` |
+
+Пример для общего каталога:
+
+```bash
+mkdir -p ~/.agents/skills
+cd ~/.agents/skills
+git clone https://github.com/perejaslav/russian-utr-skill
+```
+
+Пример для Claude Code:
+
+```bash
+mkdir -p ~/.claude/skills
+cd ~/.claude/skills
+git clone https://github.com/perejaslav/russian-utr-skill
+```
+
+OpenCode и Cursor читают также каталог `~/.claude/skills/`. Goose читает его
+для совместимости. Если скилл уже стоит там, второй экземпляр не нужен.
+
+После установки начните новую сессию агента. Агенты читают список скиллов
+при запуске.
+
+### Агенты без поддержки скиллов
+
+Некоторые агенты не читают `SKILL.md`. Они читают файл правил проекта:
+`AGENTS.md`, `CONVENTIONS.md` или похожий файл. Для такого агента скопируйте
+скилл в проект и добавьте в файл правил строку:
+
+```text
+Для русского технического текста применяй правила из .agents/skills/russian-utr-skill/SKILL.md.
+```
+
+Тогда агент прочитает `SKILL.md`, когда получит такую задачу.
+
+### Проверка
 
 Проверьте установку из каталога скилла:
 
@@ -105,7 +194,8 @@ git clone https://github.com/perejaslav/russian-utr-skill ~/.claude/skills/russi
 python scripts/utr-lint.py --selftest
 ```
 
-Нужен Python 3.10 или новее.
+Нужен Python 3.10 или новее. Если команда `python` не найдена, используйте
+`python3`.
 
 ### Необязательная зависимость
 
@@ -229,9 +319,11 @@ russian-utr-skill/
 │   ├── before-after.md
 │   └── linter-edge-cases.md
 ├── scripts/
-│   └── utr-lint.py
+│   ├── utr-lint.py
+│   └── install.py
 └── tests/
     ├── test_utr_lint.py
+    ├── test_install.py
     └── fixtures/
 ```
 
@@ -241,7 +333,8 @@ russian-utr-skill/
 - `examples/before-after.md` — 18 примеров по типам текста.
 - `examples/linter-edge-cases.md` — фикстура для проверки линтера.
 - `scripts/utr-lint.py` — линтер формы текста.
-- `tests/` — автоматические тесты линтера.
+- `scripts/install.py` — установка скилла в каталог агента.
+- `tests/` — автоматические тесты линтера, установщика и формата скилла.
 
 ## Ограничения
 
