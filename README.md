@@ -95,9 +95,10 @@
 Claude Code, OpenCode, Codex, Gemini CLI, Cursor, Pi, Oh My Pi и Goose. Скилл не
 зависит от инструментов конкретного агента. Меняется только каталог установки.
 
-Каталог скилла должен называться `russian-utr`. Это имя совпадает с полем
-`name` в `SKILL.md`. Стандарт требует такого совпадения. Поэтому указывайте имя
-каталога явно при клонировании.
+Скилл называется `russian-utr-skill`, как и репозиторий. Стандарт требует,
+чтобы имя каталога совпадало с полем `name` в `SKILL.md`. Команда `git clone`
+по умолчанию создаёт каталог с именем репозитория. Поэтому имя каталога
+указывать не нужно.
 
 ### Быстрая установка
 
@@ -112,9 +113,9 @@ python scripts/install.py
 
 Без параметров скрипт ставит скилл в два каталога:
 
-- `~/.agents/skills/russian-utr` для OpenCode, Codex, Gemini CLI, Cursor, Pi,
+- `~/.agents/skills/russian-utr-skill` для OpenCode, Codex, Gemini CLI, Cursor, Pi,
   Oh My Pi и Goose
-- `~/.claude/skills/russian-utr` для Claude Code.
+- `~/.claude/skills/russian-utr-skill` для Claude Code.
 
 Параметры скрипта:
 
@@ -136,7 +137,7 @@ python scripts/install.py --dry-run
 
 ### Ручная установка
 
-Клонируйте репозиторий в каталог из таблицы. Каталог для всех проектов
+Перейдите в каталог скиллов из таблицы и клонируйте туда репозиторий. Каталог для всех проектов
 указан в колонке «Пользователь». Каталог для одного проекта указан в колонке
 «Проект».
 
@@ -154,13 +155,17 @@ python scripts/install.py --dry-run
 Пример для общего каталога:
 
 ```bash
-git clone https://github.com/perejaslav/russian-utr-skill ~/.agents/skills/russian-utr
+mkdir -p ~/.agents/skills
+cd ~/.agents/skills
+git clone https://github.com/perejaslav/russian-utr-skill
 ```
 
 Пример для Claude Code:
 
 ```bash
-git clone https://github.com/perejaslav/russian-utr-skill ~/.claude/skills/russian-utr
+mkdir -p ~/.claude/skills
+cd ~/.claude/skills
+git clone https://github.com/perejaslav/russian-utr-skill
 ```
 
 OpenCode и Cursor читают также каталог `~/.claude/skills/`. Goose читает его
@@ -176,7 +181,7 @@ OpenCode и Cursor читают также каталог `~/.claude/skills/`. G
 скилл в проект и добавьте в файл правил строку:
 
 ```text
-Для русского технического текста применяй правила из .agents/skills/russian-utr/SKILL.md.
+Для русского технического текста применяй правила из .agents/skills/russian-utr-skill/SKILL.md.
 ```
 
 Тогда агент прочитает `SKILL.md`, когда получит такую задачу.

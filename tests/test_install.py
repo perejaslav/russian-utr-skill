@@ -106,7 +106,7 @@ def test_skill_references_exist():
 def test_default_installs_shared_and_claude_dirs(tmp_path, capsys):
     assert inst.main(["--home", str(tmp_path)]) == 0
     for root in (".agents/skills", ".claude/skills"):
-        target = tmp_path / root / "russian-utr"
+        target = tmp_path / root / "russian-utr-skill"
         assert (target / "SKILL.md").is_file()
         assert (target / "scripts" / "utr-lint.py").is_file()
         assert (target / "references" / "writing-rules.md").is_file()
@@ -117,12 +117,12 @@ def test_default_installs_shared_and_claude_dirs(tmp_path, capsys):
 def test_all_deduplicates_targets(tmp_path):
     found = inst.targets(list(inst.HARNESSES), tmp_path, None)
     assert len(found) == len(set(found))
-    assert tmp_path / ".agents/skills/russian-utr" in found
+    assert tmp_path / ".agents/skills/russian-utr-skill" in found
 
 
 def test_project_scope(tmp_path, capsys):
     assert inst.main(["--harness", "opencode", "--project", str(tmp_path), "--home", "/nonexistent"]) == 0
-    assert (tmp_path / ".opencode/skills/russian-utr/SKILL.md").is_file()
+    assert (tmp_path / ".opencode/skills/russian-utr-skill/SKILL.md").is_file()
 
 
 def test_existing_target_needs_force(tmp_path, capsys):
@@ -130,7 +130,7 @@ def test_existing_target_needs_force(tmp_path, capsys):
     assert inst.main(args) == 0
     assert inst.main(args) == 1
     assert inst.main([*args, "--force"]) == 0
-    assert (tmp_path / ".pi/agent/skills/russian-utr/SKILL.md").is_file()
+    assert (tmp_path / ".pi/agent/skills/russian-utr-skill/SKILL.md").is_file()
 
 
 def test_dry_run_changes_nothing(tmp_path, capsys):
@@ -145,7 +145,7 @@ def test_link_creates_symlink(tmp_path, capsys):
         pytest.skip("symlinks are not available")
     if code != 0:
         pytest.skip("symlinks are not available")
-    target = tmp_path / ".agents/skills/russian-utr"
+    target = tmp_path / ".agents/skills/russian-utr-skill"
     assert target.is_symlink()
     assert (target / "SKILL.md").is_file()
 
@@ -160,6 +160,6 @@ def test_installed_linter_runs(tmp_path, capsys):
     assert inst.main(["--harness", "agents", "--home", str(tmp_path)]) == 0
     import subprocess
 
-    linter = tmp_path / ".agents/skills/russian-utr/scripts/utr-lint.py"
+    linter = tmp_path / ".agents/skills/russian-utr-skill/scripts/utr-lint.py"
     result = subprocess.run([sys.executable, str(linter), "--selftest"], capture_output=True)
     assert result.returncode == 0, result.stderr

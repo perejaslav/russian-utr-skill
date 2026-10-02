@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Install the russian-utr skill into the skill directory of an agent harness.
+"""Install the russian-utr-skill into the skill directory of an agent harness.
 
 The skill follows the open Agent Skills format (https://agentskills.io).
 Most harnesses read the shared directory ~/.agents/skills. Claude Code reads
@@ -31,7 +31,7 @@ import shutil
 import sys
 from pathlib import Path
 
-SKILL_NAME = "russian-utr"
+SKILL_NAME = "russian-utr-skill"
 SOURCE = Path(__file__).resolve().parent.parent
 
 #: Files and directories the skill needs at run time.
@@ -115,7 +115,7 @@ def install(target: Path, link: bool, force: bool) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Устанавливает скилл russian-utr в каталог скиллов агента."
+        description="Устанавливает скилл russian-utr-skill в каталог скиллов агента."
     )
     parser.add_argument(
         "--harness",
